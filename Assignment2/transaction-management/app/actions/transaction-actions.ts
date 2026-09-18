@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { createTransactionSchema } from "@/lib/validation/schemas";
 import { AuditAction } from "@prisma/client";
 import { sendTransactionEmail } from "@/lib/email/resend";
+import { generateTransactionReference } from "@/lib/reference";
 import { z } from "zod";
 
 // ─────────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ export async function createTransaction(
         data: {
           // userId ALWAYS from authenticated session — NEVER accepted from client
           userId: currentUser.id,
+          reference: generateTransactionReference(),
           title: input.title,
           description: input.description,
           amount: input.amount,

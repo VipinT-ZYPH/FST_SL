@@ -9,8 +9,9 @@
 **/out/
 **/build/
 
-# environment files
+# environment files (never commit real credentials)
 **/.env*
+!**/.env.example
 
 # debug and generated files
 **/coverage/

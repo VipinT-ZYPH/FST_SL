@@ -1,101 +1,158 @@
+// app/dashboard/page.tsx
+// Role-aware dashboard. Authorization is re-validated here, independently of
+// the proxy/middleware layer.
+
 import type { Metadata } from "next";
-import Link from "next/link";
-import { requireAuth } from "@/lib/authorization";
+import { redirect } from "next/navigation";
+import { CreditCard, Receipt, ShieldCheck, Users } from "lucide-react";
+import { requireAuth, isAuthorizationError } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
-import { UserRole } from "@prisma/client";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { TransactionTable } from "@/components/transactions/transaction-table";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Dashboard",
-  description: "Your TxnManager dashboard",
+  description: "Your transaction overview",
 };
 
-export default async function DashboardPage() {
-  const user = await requireAuth();
-    const where = user.role === UserRole.ADMIN ? {} : { userId: user.id };
-    const [total, credits, debits, recentTransactions] = await Promise.all([
-      prisma.transaction.count({ where }),
-      prisma.transaction.aggregate({ where: { ...where, type: "CREDIT" }, _sum: { amount: true } }),
-      prisma.transaction.aggregate({ where: { ...where, type: "DEBIT" }, _sum: { amount: true } }),
-      prisma.transaction.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: { title: true, amount: true, type: true, status: true, createdAt: true },
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  let user;
+  try {
+    user = await requireAuth();
+  } catch (error) {
+    if (isAuthorizationError(error)) redirect("/login?callbackUrl=/dashboard");
+    throw error;
+  }
+
+  const { error } = await searchParams;
+  const isAdmin = user.role === "ADMIN";
+  // ── ADMIN / MEMBER ─────────────────────────────────────────
+  const scope = isAdmin ? {} : { userId: user.id };
+
+  const [transactionCount, completedSum, recentTransactions, userCount] =
+    await Promise.all([
+      prisma.transaction.count({ where: scope }),
+      prisma.transaction.aggregate({
+        where: { ...scope, status: "COMPLETED" },
+        _sum: { amount: true },
       }),
+      prisma.transaction.findMany({
+        where: scope,
+        orderBy: { createdAt: "desc" },
+        take: 8,
+        select: {
+          id: true,
+          reference: true,
+          title: true,
+          description: true,
+          amount: true,
+          type: true,
+          status: true,
+          createdAt: true,
+          user: { select: { name: true } },
+        },
+      }),
+      isAdmin ? prisma.user.count() : Promise.resolve(0),
     ]);
 
-    const formatAmount = (amount: unknown) =>
-      new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(amount ?? 0));
-
   return (
-      <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-10 flex flex-wrap items-start justify-between gap-6">
-            <div>
-              <p className="text-sm font-medium text-blue-400">TxnManager</p>
-              <h1 className="mt-2 text-3xl font-bold">Welcome, {user.name}</h1>
-              <p className="mt-2 text-slate-400">{user.email} · {user.role === UserRole.ADMIN ? "All account activity" : "Your account activity"}</p>
-            </div>
-            <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-300">
-              {user.role}
-            </span>
-          </div>
+    <DashboardShell user={user}>
+      {error === "forbidden" ? (
+        <Alert variant="warning" className="mb-6">
+          You do not have permission to view that page.
+        </Alert>
+      ) : null}
 
-          <nav className="mb-8 flex flex-wrap gap-5 text-sm">
-            <span className="font-semibold text-blue-400">Dashboard</span>
-            <Link href="/transactions" className="text-slate-400 hover:text-white">Transactions</Link>
-            {user.role === UserRole.ADMIN && <Link href="/admin" className="text-slate-400 hover:text-white">Admin</Link>}
-          </nav>
-
-          <section className="grid gap-5 md:grid-cols-4">
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-              <p className="text-sm text-slate-400">Transactions</p>
-              <p className="mt-3 text-2xl font-semibold">{total}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-              <p className="text-sm text-slate-400">Credits</p>
-              <p className="mt-3 text-2xl font-semibold text-emerald-400">{formatAmount(credits._sum.amount)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-              <p className="text-sm text-slate-400">Debits</p>
-              <p className="mt-3 text-2xl font-semibold text-rose-400">{formatAmount(debits._sum.amount)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-              <p className="text-sm text-slate-400">Account status</p>
-              <p className="mt-3 text-2xl font-semibold text-emerald-400">Active</p>
-            </div>
-          </section>
-
-          <section className="mt-8 rounded-xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Recent transactions</h2>
-                <p className="mt-1 text-sm text-slate-400">The latest activity for this account.</p>
-              </div>
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Last 5</span>
-            </div>
-
-            {recentTransactions.length === 0 ? (
-              <p className="mt-8 rounded-lg border border-dashed border-slate-700 px-4 py-8 text-center text-sm text-slate-400">
-                No transactions yet.
-              </p>
-            ) : (
-              <div className="mt-5 divide-y divide-slate-800">
-                {recentTransactions.map((transaction) => (
-                  <div key={`${transaction.title}-${transaction.createdAt.toISOString()}`} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-                    <div>
-                      <p className="font-medium">{transaction.title}</p>
-                      <p className="mt-1 text-xs text-slate-500">{transaction.status} · {transaction.createdAt.toLocaleDateString()}</p>
-                    </div>
-                    <p className={transaction.type === "CREDIT" ? "font-semibold text-emerald-400" : "font-semibold text-rose-400"}>
-                      {transaction.type === "CREDIT" ? "+" : "-"}{formatAmount(transaction.amount)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Welcome back, {user.name}
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            {isAdmin
+              ? "Organisation-wide overview of users and transactions."
+              : "An overview of your own transactions."}
+          </p>
         </div>
-      </main>
+        <Button asChild>
+          <Link href="/transactions">Go to transactions</Link>
+        </Button>
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total transactions"
+          value={transactionCount}
+          icon={<Receipt className="h-5 w-5" aria-hidden />}
+        />
+        <StatCard
+          label="Completed value"
+          value={formatCurrency(Number(completedSum._sum.amount ?? 0))}
+          icon={<CreditCard className="h-5 w-5" aria-hidden />}
+        />
+        {isAdmin ? (
+          <StatCard
+            label="Total users"
+            value={userCount}
+            icon={<Users className="h-5 w-5" aria-hidden />}
+          />
+        ) : (
+          <StatCard
+            label="Your role"
+            value={user.role}
+            hint="Members can create transactions"
+            icon={<ShieldCheck className="h-5 w-5" aria-hidden />}
+          />
+        )}
+        <StatCard
+          label="Recent activity"
+          value={recentTransactions.length}
+          hint="Most recent transactions"
+          icon={<ShieldCheck className="h-5 w-5" aria-hidden />}
+        />
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader className="flex-row items-center justify-between">
+          <div>
+            <CardTitle>Recent transactions</CardTitle>
+            <CardDescription>
+              {isAdmin ? "Across all accounts" : "Your latest activity"}
+            </CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/transactions">View all</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <TransactionTable
+            showOwner={isAdmin}
+            transactions={recentTransactions.map((t) => ({
+              id: t.id,
+              reference: t.reference,
+              title: t.title,
+              description: t.description,
+              amount: t.amount.toString(),
+              type: t.type,
+              status: t.status,
+              createdAt: t.createdAt,
+              owner: t.user.name,
+            }))}
+          />
+        </CardContent>
+      </Card>
+    </DashboardShell>
   );
 }

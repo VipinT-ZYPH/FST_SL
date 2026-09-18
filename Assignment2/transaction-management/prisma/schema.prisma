@@ -94,7 +94,7 @@ model Transaction {
   amount      Decimal           @db.Decimal(12, 2)
   type        TransactionType
   status      TransactionStatus @default(PENDING)
-  reference   String            @unique @default(cuid())
+  reference   String            @unique   // human-readable TXN-XXXXXXXX (see lib/reference.ts)
   metadata    Json?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -125,6 +125,9 @@ model AuditLog {
   createdAt     DateTime    @default(now())
 
   // Relations
+  // NOTE: `entityId` is a polymorphic pointer (it may reference a Transaction,
+  // a User, or another entity), so it is deliberately indexed but NOT a foreign
+  // key. Only `userId` (the actor) is a real relation.
   user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])

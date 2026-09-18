@@ -1,31 +1,39 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import Link from "next/link";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signUp } from "@/lib/auth/auth-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert } from "@/components/ui/alert";
 
 export function SignupForm() {
   const router = useRouter();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setPending(true);
 
-    const formData = new FormData(event.currentTarget);
-    const result = await signUp.email({
-      name: String(formData.get("name")),
-      email: String(formData.get("email")),
-      password: String(formData.get("password")),
-      callbackURL: "/dashboard",
-    });
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
 
-    setPending(false);
-    if (result.error) {
-      setError(result.error.message ?? "Unable to create account");
+    setLoading(true);
+
+    // Note: role is never sent from the client. Better Auth is configured with
+    // `input: false` on the role field, so every new account starts as MEMBER.
+    const { error: signUpError } = await signUp.email({ name, email, password });
+
+    if (signUpError) {
+      setError(signUpError.message ?? "Could not create your account");
+      setLoading(false);
       return;
     }
 
@@ -34,25 +42,67 @@ export function SignupForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">Name</label>
-        <input id="name" name="name" type="text" autoComplete="name" required className="w-full rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2.5 text-white outline-none focus:border-blue-400" />
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      {error ? <Alert variant="destructive">{error}</Alert> : null}
+
+      <div className="space-y-2">
+        <Label htmlFor="name" className="text-slate-200">
+          Full name
+        </Label>
+        <Input
+          id="name"
+          name="name"
+          autoComplete="name"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Jane Doe"
+          className="border-slate-700 bg-slate-900/60 text-slate-100 placeholder:text-slate-500"
+        />
       </div>
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" required className="w-full rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2.5 text-white outline-none focus:border-blue-400" />
+
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-slate-200">
+          Email
+        </Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="border-slate-700 bg-slate-900/60 text-slate-100 placeholder:text-slate-500"
+        />
       </div>
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-        <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required className="w-full rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2.5 text-white outline-none focus:border-blue-400" />
+
+      <div className="space-y-2">
+        <Label htmlFor="password" className="text-slate-200">
+          Password
+        </Label>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={8}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="At least 8 characters"
+          className="border-slate-700 bg-slate-900/60 text-slate-100 placeholder:text-slate-500"
+        />
       </div>
-      {error && <p className="text-sm text-red-400">{error}</p>}
-      <button type="submit" disabled={pending} className="w-full rounded-lg bg-blue-500 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60">
-        {pending ? "Creating account..." : "Create account"}
-      </button>
-      <p className="text-center text-sm text-slate-400">
-        Already have an account? <Link href="/login" className="text-blue-400 hover:text-blue-300">Sign in</Link>
+
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "Creating account…" : "Create account"}
+      </Button>
+
+      <p className="text-center text-xs text-slate-500">
+        New accounts are created with the MEMBER role. An administrator can upgrade
+        you to MEMBER.
       </p>
     </form>
   );
