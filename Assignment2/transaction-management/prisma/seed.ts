@@ -1,9 +1,15 @@
 // prisma/seed.ts
 // Faker.js seeding — creates relational dummy data in dependency order
 
+import { config as loadEnv } from "dotenv";
 import { PrismaClient, UserRole, TransactionType, TransactionStatus, AuditAction, EmailEventType } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 import { createId } from "@paralleldrive/cuid2";
+import { hashPassword } from "better-auth/crypto";
+
+// Load .env.local first (Next.js convention), then fall back to .env.
+loadEnv({ path: ".env.local" });
+loadEnv();
 
 const prisma = new PrismaClient();
 
@@ -13,11 +19,6 @@ const prisma = new PrismaClient();
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function pickEnum<T extends object>(enumObj: T): T[keyof T] {
-  const values = Object.values(enumObj) as T[keyof T][];
-  return pick(values);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -105,12 +106,37 @@ async function main() {
 
   console.log(`✓ Users created: ${users.length}`);
 
-  // Create Account entries for fixed users (credential providers)
-  // NOTE: In production, Better Auth handles password hashing.
-  // This seed creates placeholder accounts to show the schema relationship.
-  // Real sign-in for seeded users should be done via the /signup page.
-  console.log(`  → Note: Use /signup to create real credentials for testing`);
-  console.log(`  → Fixed user emails: admin@txnmanager.dev | alice@txnmanager.dev | guest@txnmanager.dev`);
+  // ─── CREDENTIAL ACCOUNTS ──────────────────────────────────
+  // Every seeded user gets a real Better Auth credential account so the
+  // demo data is actually signable-in. The password is read from the
+  // SEED_USER_PASSWORD environment variable and is NEVER printed or
+  // committed. Hashing uses Better Auth's own hashPassword(), so the stored
+  // value is identical in format to a password set through /signup.
+
+  const seedPassword = process.env.SEED_USER_PASSWORD;
+  if (!seedPassword || seedPassword.length < 8) {
+    throw new Error(
+      "SEED_USER_PASSWORD is not set (min 8 characters). Add it to .env.local before seeding."
+    );
+  }
+
+  const passwordHash = await hashPassword(seedPassword);
+
+  const accounts = await prisma.$transaction(
+    users.map((u) =>
+      prisma.account.create({
+        data: {
+          userId: u.id,
+          // Better Auth's credential provider expects accountId === user id.
+          accountId: u.id,
+          providerId: "credential",
+          password: passwordHash,
+        },
+      })
+    )
+  );
+
+  console.log(`✓ Credential accounts created: ${accounts.length}`);
 
   // ─── TRANSACTIONS ─────────────────────────────────────────
 
@@ -141,7 +167,7 @@ async function main() {
     "Travel Reimbursement",
   ];
 
-  const transactionData = Array.from({ length: 60 }, (_, i) => {
+  const transactionData = Array.from({ length: 60 }, () => {
     const user = pick(memberUsers);
     const type = pick([TransactionType.CREDIT, TransactionType.DEBIT]);
     const title = pick(transactionTitles) + (Math.random() > 0.5 ? ` ${faker.number.int({ min: 100, max: 999 })}` : "");
@@ -187,13 +213,6 @@ async function main() {
   console.log(`✓ Transactions created: ${transactions.length}`);
 
   // ─── AUDIT LOGS ───────────────────────────────────────────
-
-  const auditActions = [
-    AuditAction.USER_CREATED,
-    AuditAction.TRANSACTION_CREATED,
-    AuditAction.LOGIN,
-    AuditAction.EMAIL_SENT,
-  ];
 
   // Create audit log for each user creation
   const userAuditLogs = users.map((u) => ({
@@ -309,13 +328,16 @@ async function main() {
   console.log(`  Transactions     : ${transactions.length}`);
   console.log(`  Audit logs       : ${auditLogs.length}`);
   console.log(`  Email events     : ${emailEvents.length}`);
+  console.log(`  Credential accts : ${accounts.length}`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("\n✅ Seed completed successfully.");
-  console.log("\n⚠️  Important: The seeded users do NOT have login credentials.");
-  console.log("   Use /signup to register with these emails, or create new accounts.");
-  console.log("   Recommended test accounts:");
+  console.log("\n🔑 All seeded users have working credentials.");
+  console.log("   Sign in with the shared demo password from SEED_USER_PASSWORD");
+  console.log("   in your .env.local (the value is never printed here).");
+  console.log("   Test accounts:");
   console.log("     admin@txnmanager.dev  → ADMIN");
   console.log("     alice@txnmanager.dev  → MEMBER");
+  console.log("     bob@txnmanager.dev    → MEMBER");
   console.log("     guest@txnmanager.dev  → GUEST");
 }
 

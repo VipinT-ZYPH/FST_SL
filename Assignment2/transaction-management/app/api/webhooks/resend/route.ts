@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       "svix-id": svixId,
       "svix-timestamp": svixTimestamp,
       "svix-signature": svixSignature,
-    }) as ResendWebhookPayload;
+    }) as unknown as ResendWebhookPayload;
   } catch (err) {
     console.warn("[Webhook] Signature verification failed:", err instanceof Error ? err.message : "unknown");
     return NextResponse.json(

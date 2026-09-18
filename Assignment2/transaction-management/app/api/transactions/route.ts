@@ -5,11 +5,12 @@
 // POST /api/transactions — create transaction (MEMBER or ADMIN)
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireMember, requireAuth, isAuthorizationError, AuthorizationError } from "@/lib/authorization";
+import { requireMember, isAuthorizationError } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { createTransactionSchema, transactionQuerySchema } from "@/lib/validation/schemas";
 import { UserRole, AuditAction } from "@prisma/client";
 import { sendTransactionEmail } from "@/lib/email/resend";
+import { generateTransactionReference } from "@/lib/reference";
 import { z } from "zod";
 
 // ─────────────────────────────────────────────────────────────
@@ -121,6 +122,7 @@ export async function POST(request: NextRequest) {
       const created = await tx.transaction.create({
         data: {
           userId: user.id, // Always from authenticated session — NEVER from client
+          reference: generateTransactionReference(),
           title: input.title,
           description: input.description,
           amount: input.amount,

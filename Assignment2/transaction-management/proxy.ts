@@ -1,12 +1,17 @@
-// middleware.ts
-// Next.js Middleware — route protection layer
+// proxy.ts
+// Next.js Proxy (formerly Middleware) — route protection layer
 //
 // This middleware is the FIRST line of defense. It validates sessions and
 // roles before routes resolve. However, all sensitive route handlers and
 // server actions ALSO perform independent authorization (defence in depth).
 //
-// Next.js 15+ uses middleware.ts at the project root.
-// The `matcher` config below limits which paths trigger this middleware.
+// VERSION NOTE:
+//   Next.js 16+ : this file is `proxy.ts` and exports `proxy()`.
+//   Next.js 13–15: the identical file is named `middleware.ts` and exports
+//                  `middleware()`. Nothing else changes. This project runs
+//                  Next.js 16, so `proxy.ts` / `proxy()` is used.
+//
+// The `matcher` config below limits which paths trigger this layer.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
@@ -39,7 +44,7 @@ function matchesAny(pathname: string, routes: string[]): boolean {
 // Middleware
 // ─────────────────────────────────────────────────────────────
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Always allow public routes
@@ -141,7 +146,7 @@ export async function middleware(request: NextRequest) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Matcher — limits which paths trigger this middleware
+// Matcher — limits which paths trigger this layer
 // (excludes static files, _next internals)
 // ─────────────────────────────────────────────────────────────
 
