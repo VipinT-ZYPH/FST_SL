@@ -6,21 +6,29 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:reset": "prisma migrate reset",
+    "db:seed": "prisma db seed",
+    "db:make-admin": "tsx prisma/make-admin.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@faker-js/faker": "^10.6.0",
     "@paralleldrive/cuid2": "^3.3.0",
-    "@prisma/client": "^7.10.0",
+    "@prisma/client": "^6.19.0",
     "@react-email/components": "^1.0.12",
     "better-auth": "^1.7.4",
+    "lucide-react": "^0.468.0",
     "next": "16.3.5",
-    "prisma": "^7.10.0",
+    "prisma": "^6.19.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-email": "^6.9.5",
     "resend": "^6.28.0",
-    "svix": "^2.5.0"
+    "svix": "^2.5.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -30,6 +38,10 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

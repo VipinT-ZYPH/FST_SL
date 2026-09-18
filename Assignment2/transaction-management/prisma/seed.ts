@@ -15,11 +15,6 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function pickEnum<T extends object>(enumObj: T): T[keyof T] {
-  const values = Object.values(enumObj) as T[keyof T][];
-  return pick(values);
-}
-
 // ─────────────────────────────────────────────────────────────
 // Main seed function
 // ─────────────────────────────────────────────────────────────
@@ -45,7 +40,6 @@ async function main() {
   const roles: { role: UserRole; label: string }[] = [
     { role: UserRole.ADMIN, label: "Admin" },
     { role: UserRole.MEMBER, label: "Member" },
-    { role: UserRole.GUEST, label: "Guest" },
   ];
 
   console.log(`\n📋 Creating users...`);
@@ -70,12 +64,6 @@ async function main() {
       email: "bob@txnmanager.dev",
       role: UserRole.MEMBER,
     },
-    {
-      id: createId(),
-      name: "Guest User",
-      email: "guest@txnmanager.dev",
-      role: UserRole.GUEST,
-    },
   ];
 
   // Random users
@@ -83,7 +71,7 @@ async function main() {
     id: createId(),
     name: faker.person.fullName(),
     email: faker.internet.email().toLowerCase(),
-    role: pick([UserRole.MEMBER, UserRole.MEMBER, UserRole.GUEST]) as UserRole,
+    role: UserRole.MEMBER,
   }));
 
   const allUserData = [...fixedUsers, ...randomUsers];
@@ -110,7 +98,7 @@ async function main() {
   // This seed creates placeholder accounts to show the schema relationship.
   // Real sign-in for seeded users should be done via the /signup page.
   console.log(`  → Note: Use /signup to create real credentials for testing`);
-  console.log(`  → Fixed user emails: admin@txnmanager.dev | alice@txnmanager.dev | guest@txnmanager.dev`);
+  console.log(`  → Fixed user emails: admin@txnmanager.dev | alice@txnmanager.dev`);
 
   // ─── TRANSACTIONS ─────────────────────────────────────────
 
@@ -141,7 +129,7 @@ async function main() {
     "Travel Reimbursement",
   ];
 
-  const transactionData = Array.from({ length: 60 }, (_, i) => {
+  const transactionData = Array.from({ length: 60 }, () => {
     const user = pick(memberUsers);
     const type = pick([TransactionType.CREDIT, TransactionType.DEBIT]);
     const title = pick(transactionTitles) + (Math.random() > 0.5 ? ` ${faker.number.int({ min: 100, max: 999 })}` : "");
@@ -187,13 +175,6 @@ async function main() {
   console.log(`✓ Transactions created: ${transactions.length}`);
 
   // ─── AUDIT LOGS ───────────────────────────────────────────
-
-  const auditActions = [
-    AuditAction.USER_CREATED,
-    AuditAction.TRANSACTION_CREATED,
-    AuditAction.LOGIN,
-    AuditAction.EMAIL_SENT,
-  ];
 
   // Create audit log for each user creation
   const userAuditLogs = users.map((u) => ({
@@ -304,7 +285,7 @@ async function main() {
   console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("📊 Seed Summary");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log(`  Roles configured : ${roles.length} (ADMIN, MEMBER, GUEST)`);
+  console.log(`  Roles configured : ${roles.length} (ADMIN, MEMBER)`);
   console.log(`  Users created    : ${users.length}`);
   console.log(`  Transactions     : ${transactions.length}`);
   console.log(`  Audit logs       : ${auditLogs.length}`);
@@ -316,7 +297,6 @@ async function main() {
   console.log("   Recommended test accounts:");
   console.log("     admin@txnmanager.dev  → ADMIN");
   console.log("     alice@txnmanager.dev  → MEMBER");
-  console.log("     guest@txnmanager.dev  → GUEST");
 }
 
 // ─────────────────────────────────────────────────────────────

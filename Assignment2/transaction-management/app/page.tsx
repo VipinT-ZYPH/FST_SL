@@ -88,27 +88,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Test accounts banner */}
-      <section className="mx-auto max-w-7xl px-6 pb-24">
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8">
-          <h2 className="text-white font-bold text-xl mb-6 text-center">Test Accounts (after seeding)</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {testAccounts.map((account) => (
-              <div key={account.role} className="bg-slate-700/50 rounded-xl p-4">
-                <div className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold mb-3 ${account.badgeClass}`}>
-                  {account.role}
-                </div>
-                <p className="text-white text-sm font-medium">{account.email}</p>
-                <p className="text-slate-400 text-xs mt-1">{account.description}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-slate-500 text-sm text-center mt-4">
-            Register with these emails via /signup after running <code className="text-slate-300 bg-slate-700 px-1 rounded">npm run db:seed</code>
-          </p>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="border-t border-slate-700/50 py-8">
         <p className="text-center text-slate-500 text-sm">
@@ -123,7 +102,7 @@ const features = [
   {
     icon: Shield,
     title: "Role-Based Access Control",
-    description: "ADMIN, MEMBER, and GUEST roles with server-side enforcement at every layer.",
+    description: "ADMIN and MEMBER roles with server-side enforcement at every layer.",
   },
   {
     icon: Lock,
@@ -139,26 +118,5 @@ const features = [
     icon: BarChart3,
     title: "Audit Logging & Email",
     description: "Every mutation creates an audit trail and sends a Resend transactional email.",
-  },
-];
-
-const testAccounts = [
-  {
-    role: "ADMIN",
-    email: "admin@txnmanager.dev",
-    description: "Full access — manage users, view all transactions and audit logs",
-    badgeClass: "bg-red-500/20 text-red-400 border border-red-500/30",
-  },
-  {
-    role: "MEMBER",
-    email: "alice@txnmanager.dev",
-    description: "Create and view own transactions, receive email notifications",
-    badgeClass: "bg-blue-500/20 text-blue-400 border border-blue-500/30",
-  },
-  {
-    role: "GUEST",
-    email: "guest@txnmanager.dev",
-    description: "Limited access — cannot create transactions or access admin areas",
-    badgeClass: "bg-slate-500/20 text-slate-400 border border-slate-500/30",
   },
 ];

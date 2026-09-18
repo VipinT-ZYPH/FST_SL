@@ -32,7 +32,11 @@ const PUBLIC_ROUTES = ["/", "/login", "/signup", "/api/auth"];
 // ─────────────────────────────────────────────────────────────
 
 function matchesAny(pathname: string, routes: string[]): boolean {
-  return routes.some((route) => pathname.startsWith(route));
+  return routes.some((route) =>
+    route === "/"
+      ? pathname === "/"
+      : pathname === route || pathname.startsWith(`${route}/`)
+  );
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -98,7 +102,7 @@ export async function middleware(request: NextRequest) {
         user?: { role?: string };
       } | null;
 
-      const role = sessionData?.user?.role ?? "GUEST";
+      const role = sessionData?.user?.role ?? "MEMBER";
 
       // Admin routes — require ADMIN role
       if (matchesAny(pathname, ADMIN_ROUTES)) {

@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Multi-Tenant Transaction Management System
 
-## Getting Started
+Academic Next.js application demonstrating Prisma/PostgreSQL, Better Auth, RBAC, protected APIs, Server Actions, audit logging, Faker seeding, React Email, and Resend webhooks.
 
-First, run the development server:
+## Setup
 
-```bash
+```powershell
+npm install
+Copy-Item .env.example .env
+# Set DATABASE_URL and BETTER_AUTH_SECRET in .env
+npx prisma db push
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`. Register at `/signup`; new accounts start as `MEMBER`. Promote a registered account explicitly:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+npm run db:make-admin -- your-email@example.com
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Commands
 
-## Learn More
+- `npm run db:generate` generates Prisma Client.
+- `npm run db:migrate` creates/applies a development migration.
+- `npm run db:reset` resets the database and runs the configured seed.
+- `npm run db:seed` populates users, transactions, audit logs, and email events.
+- `npm run lint` checks ESLint rules.
+- `npm run build` runs the production build and TypeScript check.
 
-To learn more about Next.js, take a look at the following resources:
+## Routes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/dashboard` shows scoped transaction totals and recent activity.
+- `/transactions` lists transactions and lets members/admins create them.
+- `/admin` is admin-only and shows user, transaction, audit, and email totals.
+- `GET/POST /api/transactions` are protected transaction endpoints.
+- `GET/PATCH /api/admin/users` and `GET /api/admin/audit-logs` are admin-only.
+- `/api/webhooks/resend` verifies signed Resend events and stores `EmailEvent` rows.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Security
 
-## Deploy on Vercel
+Better Auth owns credential hashing and sessions. Authorization is repeated in middleware, route handlers, pages, and Server Actions. Transaction ownership comes from the session. Email errors are non-fatal after a successful database commit. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Evidence
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Use [docs/EVIDENCE_CHECKLIST.md](docs/EVIDENCE_CHECKLIST.md) to capture assignment evidence. Configure Resend variables only when demonstrating email delivery; never commit real secrets.
